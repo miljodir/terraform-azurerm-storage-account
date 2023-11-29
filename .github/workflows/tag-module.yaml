@@ -30,7 +30,7 @@ jobs:
       wiki-enabled: true
 
   tag:
-    if: github.event_name == 'repository_dispatch' && github.event.client_payload.type == 'create_release'
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'create_release'
     uses: miljodir/workflow-templates/.github/workflows/create-release.yaml@create-release/v1
     permissions:
       contents: write
@@ -38,7 +38,7 @@ jobs:
       payload: ${{ toJson(github.event.client_payload) }}
 
   wiki:
-    if: github.event_name == 'repository_dispatch' && github.event.client_payload.type == 'update_wiki'
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'update_wiki'
     uses: miljodir/workflow-templates/.github/workflows/update-wiki.yaml@update-wiki/v1
     permissions:
       contents: write
