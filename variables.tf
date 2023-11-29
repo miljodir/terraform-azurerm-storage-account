@@ -157,3 +157,9 @@ variable "access_tier" {
   description = "The access tier for the storage account. Defaults to Hot."
   default     = "Hot"
 }
+
+variable "https_only" {
+  type        = bool
+  description = "Is HTTPS only enabled? Defaults to true. Must be false for using NFS protocol towards Azure Files."
+  default     = true
+}
