@@ -14,7 +14,7 @@ on:
       - "**.tf"
 
   repository_dispatch:
-    types: [create_release]
+    types: [create_release, update_wiki]
 
 jobs:
   pr:
@@ -30,9 +30,15 @@ jobs:
       wiki-enabled: true
 
   tag:
-    if: github.event_name == 'repository_dispatch'
+    if: github.event_name == 'repository_dispatch' && github.event.client_payload.type == 'create_release'
     uses: miljodir/workflow-templates/.github/workflows/create-release.yaml@create-release/v1
     permissions:
       contents: write
     with:
       payload: ${{ toJson(github.event.client_payload) }}
+
+  wiki:
+    if: github.event_name == 'repository_dispatch' && github.event.client_payload.type == 'update_wiki'
+    uses: miljodir/workflow-templates/.github/workflows/update-wiki.yaml@update-wiki/v1
+    permissions:
+      contents: write
