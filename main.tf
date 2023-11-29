@@ -9,7 +9,7 @@ locals {
 }
 
 resource "random_string" "unique" {
-  count   = var.unique == null ? 1 : 0
+  count   = var.unique == null && var.storage_account_name == null ? 1 : 0
   length  = 6
   special = false
   upper   = false
@@ -30,6 +30,7 @@ resource "azurerm_storage_account" "account" {
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   nfsv3_enabled                   = var.nfsv3_enabled
   access_tier                     = var.access_tier
+  enable_https_traffic_only       = var.https_only
 
   dynamic "network_rules" {
     for_each = var.network_rules != null ? ["true"] : []
