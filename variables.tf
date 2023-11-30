@@ -109,7 +109,7 @@ variable "network_rules" {
   })
   default = {
     default_action      = "Deny"
-    bypass              = ["AzureServices"]
+    bypass              = ["None"]
     ip_rules            = []
     subnet_ids          = []
     private_link_access = []

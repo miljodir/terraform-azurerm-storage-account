@@ -3,7 +3,7 @@ locals {
   generated_storage_account_name = var.storage_account_name == null ? "${local.storage_prefix}${var.purpose}${local.unique}" : ""
   storage_prefix                 = replace(var.resource_group_name, "-", "")
 
-  unique                   = var.unique == null ? random_string.unique[0].result : var.unique
+  unique                   = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
   account_tier             = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
   account_replication_type = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
 }
