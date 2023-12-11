@@ -82,6 +82,11 @@ resource "azurerm_private_endpoint" "pe" {
     subresource_names              = [each.key]
     is_manual_connection           = false
   }
+
+  lifecycle {
+    # Avoid recreation of the private endpoint due to moving to central module
+    ignore_changes = [private_service_connection[0].name]
+  }
 }
 
 resource "azurerm_private_dns_a_record" "pe_dns" {
