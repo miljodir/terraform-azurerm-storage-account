@@ -65,6 +65,14 @@ resource "azurerm_storage_account" "account" {
       change_feed_enabled      = var.enable_versioning
     }
   }
+
+  dynamic "azure_files_authentication" {
+    for_each = var.azure_domain_join_type != null ? [1] : []
+
+    content {
+      directory_type = var.azure_domain_join_type
+    }
+  }
 }
 
 resource "azurerm_advanced_threat_protection" "atp" {

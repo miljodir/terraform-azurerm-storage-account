@@ -163,3 +163,9 @@ variable "https_only" {
   description = "Is HTTPS only enabled? Defaults to true. Must be false for using NFS protocol towards Azure Files."
   default     = true
 }
+
+variable "azure_domain_join_type" {
+  type        = string
+  description = "The type of domain join. Defaults to null. Supported: AADDS, AD and AADKERB"
+  default     = null
+}
