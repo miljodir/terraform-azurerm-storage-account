@@ -50,16 +50,20 @@ resource "azurerm_storage_account" "account" {
     }
   }
 
-  blob_properties {
-    delete_retention_policy {
-      days = var.account_kind == "FileStorage" ? null : var.blob_soft_delete_retention_days
+  dynamic "blob_properties" {
+    for_each = var.account_kind == "FileStorage" ? [] : ["blob_properties"]
+    content {
+      delete_retention_policy {
+        days = var.blob_soft_delete_retention_days
+      }
+
+      container_delete_retention_policy {
+        days = var.container_soft_delete_retention_days
+      }
+      versioning_enabled       = var.enable_versioning
+      last_access_time_enabled = var.enable_versioning
+      change_feed_enabled      = var.enable_versioning
     }
-    container_delete_retention_policy {
-      days = var.account_kind == "FileStorage" ? null : var.container_soft_delete_retention_days
-    }
-    versioning_enabled       = var.account_kind == "FileStorage" ? null : var.enable_versioning
-    last_access_time_enabled = var.account_kind == "FileStorage" ? null : var.last_access_time_enabled
-    change_feed_enabled      = var.account_kind == "FileStorage" ? null : var.change_feed_enabled
   }
 }
 
