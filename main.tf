@@ -67,10 +67,25 @@ resource "azurerm_storage_account" "account" {
   }
 
   dynamic "azure_files_authentication" {
-    for_each = var.azure_domain_join_type != null ? [1] : []
-
+    for_each = var.azure_files_authentication == null ? [] : [
+      var.azure_files_authentication
+    ]
     content {
-      directory_type = var.azure_domain_join_type
+      directory_type = azure_files_authentication.value.directory_type
+
+      dynamic "active_directory" {
+        for_each = azure_files_authentication.value.active_directory == null ? [] : [
+          azure_files_authentication.value.active_directory
+        ]
+        content {
+          domain_guid         = active_directory.value.domain_guid
+          domain_name         = active_directory.value.domain_name
+          domain_sid          = active_directory.value.domain_sid
+          forest_name         = active_directory.value.forest_name
+          netbios_domain_name = active_directory.value.netbios_domain_name
+          storage_sid         = active_directory.value.storage_sid
+        }
+      }
     }
   }
 }
