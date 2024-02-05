@@ -80,10 +80,10 @@ resource "azurerm_storage_account" "account" {
         content {
           domain_guid         = active_directory.value.domain_guid
           domain_name         = active_directory.value.domain_name
-          domain_sid          = active_directory.value.domain_sid
-          forest_name         = active_directory.value.forest_name
-          netbios_domain_name = active_directory.value.netbios_domain_name
-          storage_sid         = active_directory.value.storage_sid
+          domain_sid          = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.domain_sid : null
+          forest_name         = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.forest_name : null
+          netbios_domain_name = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.netbios_domain_name : null
+          storage_sid         = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.storage_sid : null
         }
       }
     }
