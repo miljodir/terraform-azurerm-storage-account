@@ -168,12 +168,12 @@ variable "azure_files_authentication" {
   type = object({
     directory_type = string
     active_directory = optional(object({
-      domain_guid         = string
-      domain_name         = string
-      domain_sid          = string
-      forest_name         = string
-      netbios_domain_name = string
-      storage_sid         = string
+      domain_guid         = optional(string, null)
+      domain_name         = optional(string, null)
+      domain_sid          = optional(string, null)
+      forest_name         = optional(string, null)
+      netbios_domain_name = optional(string, null)
+      storage_sid         = optional(string, null)
     }))
   })
   default     = null
