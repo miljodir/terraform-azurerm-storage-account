@@ -163,3 +163,9 @@ variable "https_only" {
   description = "Is HTTPS only enabled? Defaults to true. Must be false for using NFS protocol towards Azure Files."
   default     = true
 }
+
+variable "sftp_enabled" {
+  type        = bool
+  description = "Is SFTP enabled? Defaults to false."
+  default     = false
+}
