@@ -31,6 +31,8 @@ resource "azurerm_storage_account" "account" {
   nfsv3_enabled                   = var.nfsv3_enabled
   access_tier                     = var.access_tier
   enable_https_traffic_only       = var.https_only
+  local_user_enabled              = var.sftp_enabled && var.is_hns_enabled
+  sftp_enabled                    = var.sftp_enabled
 
   dynamic "network_rules" {
     for_each = var.network_rules != null ? ["true"] : []
