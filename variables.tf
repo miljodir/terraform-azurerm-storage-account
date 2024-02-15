@@ -170,10 +170,10 @@ variable "azure_files_authentication" {
     active_directory = optional(object({
       domain_guid         = optional(string, null)
       domain_name         = optional(string, null)
-      domain_sid          = optional(string, null)
-      forest_name         = optional(string, null)
-      netbios_domain_name = optional(string, null)
-      storage_sid         = optional(string, null)
+      domain_sid          = optional(string, " ")
+      forest_name         = optional(string, " ")
+      netbios_domain_name = optional(string, " ")
+      storage_sid         = optional(string, " ")
     }))
   })
   default     = null
