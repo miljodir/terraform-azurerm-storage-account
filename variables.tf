@@ -164,6 +164,33 @@ variable "https_only" {
   default     = true
 }
 
+variable "azure_files_authentication" {
+  type = object({
+    directory_type = string
+    active_directory = optional(object({
+      domain_guid         = optional(string, null)
+      domain_name         = optional(string, null)
+      domain_sid          = optional(string, " ")
+      forest_name         = optional(string, " ")
+      netbios_domain_name = optional(string, " ")
+      storage_sid         = optional(string, " ")
+    }))
+  })
+  default     = null
+  description = <<-EOT
+ - `directory_type` - (Required) Specifies the directory service used. Possible values are `AADDS`, `AD` and `AADKERB`.
+
+ ---
+ `active_directory` block supports the following:
+ - `domain_guid` - (Required) Specifies the domain GUID.
+ - `domain_name` - (Required) Specifies the primary domain that the AD DNS server is authoritative for.
+ - `domain_sid` - (Required) Specifies the security identifier (SID).
+ - `forest_name` - (Required) Specifies the Active Directory forest.
+ - `netbios_domain_name` - (Required) Specifies the NetBIOS domain name.
+ - `storage_sid` - (Required) Specifies the security identifier (SID) for Azure Storage.
+EOT
+}
+
 variable "sftp_enabled" {
   type        = bool
   description = "Is SFTP enabled? Defaults to false."

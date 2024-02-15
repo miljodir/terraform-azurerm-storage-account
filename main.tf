@@ -52,16 +52,43 @@ resource "azurerm_storage_account" "account" {
     }
   }
 
-  blob_properties {
-    delete_retention_policy {
-      days = var.account_kind == "FileStorage" ? null : var.blob_soft_delete_retention_days
+  dynamic "blob_properties" {
+    for_each = var.account_kind == "FileStorage" ? [] : ["blob_properties"]
+    content {
+      delete_retention_policy {
+        days = var.blob_soft_delete_retention_days
+      }
+
+      container_delete_retention_policy {
+        days = var.container_soft_delete_retention_days
+      }
+      versioning_enabled       = var.enable_versioning
+      last_access_time_enabled = var.enable_versioning
+      change_feed_enabled      = var.enable_versioning
     }
-    container_delete_retention_policy {
-      days = var.account_kind == "FileStorage" ? null : var.container_soft_delete_retention_days
+  }
+
+  dynamic "azure_files_authentication" {
+    for_each = var.azure_files_authentication == null ? [] : [
+      var.azure_files_authentication
+    ]
+    content {
+      directory_type = azure_files_authentication.value.directory_type
+
+      dynamic "active_directory" {
+        for_each = azure_files_authentication.value.active_directory == null ? [] : [
+          azure_files_authentication.value.active_directory
+        ]
+        content {
+          domain_guid         = active_directory.value.domain_guid
+          domain_name         = active_directory.value.domain_name
+          domain_sid          = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.domain_sid : null
+          forest_name         = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.forest_name : null
+          netbios_domain_name = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.netbios_domain_name : null
+          storage_sid         = azure_files_authentication.value.directory_type == "AD" ? active_directory.value.storage_sid : null
+        }
+      }
     }
-    versioning_enabled       = var.account_kind == "FileStorage" ? null : var.enable_versioning
-    last_access_time_enabled = var.account_kind == "FileStorage" ? null : var.last_access_time_enabled
-    change_feed_enabled      = var.account_kind == "FileStorage" ? null : var.change_feed_enabled
   }
 }
 
