@@ -190,3 +190,9 @@ variable "azure_files_authentication" {
  - `storage_sid` - (Required) Specifies the security identifier (SID) for Azure Storage.
 EOT
 }
+
+variable "sftp_enabled" {
+  type        = bool
+  description = "Is SFTP enabled? Defaults to false."
+  default     = false
+}
