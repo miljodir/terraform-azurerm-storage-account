@@ -198,7 +198,7 @@ variable "sftp_enabled" {
 }
 
 variable "allowed_copy_scope" {
-  type        = optional(string)
+  type        = string
   description = "Limit the copy scope of incoming data to the storage account. Defaults to AAD."
   default     = "AAD"
   validation {
