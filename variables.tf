@@ -196,3 +196,19 @@ variable "sftp_enabled" {
   description = "Is SFTP enabled? Defaults to false."
   default     = false
 }
+
+variable "allowed_copy_scope" {
+  type        = optional(string)
+  description = "Limit the copy scope of incoming data to the storage account. Defaults to AAD."
+  default     = "AAD"
+  validation {
+    condition     = var.allowed_copy_scope == null || var.allowed_copy_scope == "AAD" || var.allowed_copy_scope == "PrivateLink"
+    error_message = "allowed_copy_scope must be either AAD, PrivateLink or null."
+  }
+}
+
+variable "cross_tenant_replication_enabled" {
+  type        = bool
+  description = "Is support for cross-tenant replication enabled? Defaults to false."
+  default     = false
+}
