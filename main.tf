@@ -34,7 +34,7 @@ resource "azurerm_storage_account" "account" {
   local_user_enabled              = var.sftp_enabled && var.is_hns_enabled
   sftp_enabled                    = var.sftp_enabled
 
-  allowed_copy_scope               = var.allowed_copy_scope ? var.allowed_copy_scope : null
+  allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
 
   dynamic "network_rules" {
