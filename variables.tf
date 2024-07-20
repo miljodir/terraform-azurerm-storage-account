@@ -84,6 +84,12 @@ variable "min_tls_version" {
   type        = string
   description = "Minimum TLS version. Defaults to 1.2 as the older ones are considered insecure."
   default     = "TLS1_2"
+
+  validation {
+    condition     = contains(["TLS1_2", "TLS1_3"], var.min_tls_version)
+    error_message = "min_tls_version must be one of TLS1_2, TLS1_3."
+  
+  }
 }
 
 variable "public_network_access_enabled" {
