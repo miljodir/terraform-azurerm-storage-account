@@ -88,7 +88,7 @@ variable "min_tls_version" {
   validation {
     condition     = contains(["TLS1_2", "TLS1_3"], var.min_tls_version)
     error_message = "min_tls_version must be one of TLS1_2, TLS1_3."
-  
+
   }
 }
 
