@@ -94,8 +94,8 @@ variable "public_network_access_enabled" {
 
 variable "allow_nested_items_to_be_public" {
   type        = bool
-  description = "Allow nested items to be public? Defaults to true."
-  default     = true # TODO - default to false when v3 is released
+  description = "Allow nested items to be public? Defaults to false."
+  default     = false
 }
 
 variable "network_rules" {
