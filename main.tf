@@ -30,7 +30,7 @@ resource "azurerm_storage_account" "account" {
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   nfsv3_enabled                   = var.nfsv3_enabled
   access_tier                     = var.access_tier
-  enable_https_traffic_only       = var.https_only
+  https_traffic_only_enabled      = var.https_only
   local_user_enabled              = var.sftp_enabled && var.is_hns_enabled
   sftp_enabled                    = var.sftp_enabled
 
