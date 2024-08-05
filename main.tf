@@ -6,6 +6,8 @@ locals {
   unique                   = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
   account_tier             = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
   account_replication_type = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
+
+  minimum_tls_version = startswith(local.storage_account_name, "d") ? "TLS1_3" : var.min_tls_version
 }
 
 resource "random_string" "unique" {
@@ -24,7 +26,7 @@ resource "azurerm_storage_account" "account" {
   account_replication_type        = local.account_replication_type
   shared_access_key_enabled       = var.shared_access_key_enabled
   is_hns_enabled                  = var.is_hns_enabled
-  min_tls_version                 = var.min_tls_version
+  min_tls_version                 = local.minimum_tls_version
   account_kind                    = var.account_kind
   public_network_access_enabled   = var.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
