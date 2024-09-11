@@ -212,3 +212,9 @@ variable "cross_tenant_replication_enabled" {
   description = "Is support for cross-tenant replication enabled? Defaults to false."
   default     = false
 }
+
+variable "disable_defender" {
+  type        = bool
+  description = "Disable Azure Defender for Storage? Defaults to false."
+  default     = false
+}

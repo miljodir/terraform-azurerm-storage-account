@@ -95,6 +95,14 @@ resource "azurerm_storage_account" "account" {
   }
 }
 
+resource "azurerm_security_center_storage_defender" "disable" {
+  count = !startswith(var.resource_group_name, "p-") == true || var.disable_defender ? 1 : 0
+  storage_account_id = azurerm_storage_account.account.id
+
+  override_subscription_settings_enabled = true
+  #is_enabled = false
+}
+
 resource "azurerm_advanced_threat_protection" "atp" {
   count              = var.enable_advanced_threat_protection == true ? 1 : 0
   target_resource_id = azurerm_storage_account.account.id
