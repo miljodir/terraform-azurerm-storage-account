@@ -52,7 +52,7 @@ variable "unique" {
 
 variable "enable_advanced_threat_protection" {
   type        = bool
-  description = "Enable or disable advanced threat protection? Defaults to false."
+  description = "Disable Azure Defender for Storage? Defaults to false."
   default     = false
 }
 
@@ -210,11 +210,5 @@ variable "allowed_copy_scope" {
 variable "cross_tenant_replication_enabled" {
   type        = bool
   description = "Is support for cross-tenant replication enabled? Defaults to false."
-  default     = false
-}
-
-variable "disable_defender" {
-  type        = bool
-  description = "Disable Azure Defender for Storage? Defaults to false."
   default     = false
 }
