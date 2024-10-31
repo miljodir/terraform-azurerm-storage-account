@@ -93,6 +93,14 @@ resource "azurerm_storage_account" "account" {
       }
     }
   }
+
+  dynamic "static_website" {
+    for_each = var.static_website != null ? ["true"] : []
+    content {
+      index_document     = var.static_website.index_document
+      error_404_document = var.static_website.error_404_document
+    }
+  }
 }
 
 resource "azurerm_advanced_threat_protection" "atp" {

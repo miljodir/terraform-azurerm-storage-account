@@ -212,3 +212,12 @@ variable "cross_tenant_replication_enabled" {
   description = "Is support for cross-tenant replication enabled? Defaults to false."
   default     = false
 }
+
+variable "static_website" {
+  type = object({
+    index_document     = optional(string)
+    error_404_document = optional(string)
+  })
+  description = "Static website configuration."
+  default     = null
+}
