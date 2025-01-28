@@ -6,7 +6,8 @@ locals {
   unique                        = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
   account_tier                  = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
   account_replication_type      = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
-  public_network_access_enabled = split("-", var.resource_group_name)[0] == "d" ? true : var.public_network_access_enabled ? true : false
+  public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
+  allow_known_pips              = split("-", var.resource_group_name)[0] == "d" ? true : false
 }
 
 module "network_vars" {
@@ -47,7 +48,7 @@ resource "azurerm_storage_account" "account" {
   network_rules {
     default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
     bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
-    ip_rules                   = local.public_network_access_enabled ? try(concat(values(module.network_vars[0].known_public_ips), var.network_rules.ip_rules), (values(module.network_vars[0].known_public_ips))) : []
+    ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), var.network_rules.ip_rules) : var.network_rules.ip_rules
     virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
 
     dynamic "private_link_access" {
