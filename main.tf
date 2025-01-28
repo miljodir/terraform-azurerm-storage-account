@@ -3,9 +3,17 @@ locals {
   generated_storage_account_name = var.storage_account_name == null ? "${local.storage_prefix}${var.purpose}${local.unique}" : ""
   storage_prefix                 = replace(var.resource_group_name, "-", "")
 
-  unique                   = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
-  account_tier             = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
-  account_replication_type = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
+  unique                        = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
+  account_tier                  = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
+  account_replication_type      = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
+  public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
+  allow_known_pips              = split("-", var.resource_group_name)[0] == "d" ? true : false
+}
+
+module "network_vars" {
+  # private module used for public IP whitelisting
+  count  = local.public_network_access_enabled == true ? 1 : 0
+  source = "git@github.com:miljodir/cp-shared.git//modules/public_nw_ips?ref=public_nw_ips/v1"
 }
 
 resource "random_string" "unique" {
@@ -26,7 +34,7 @@ resource "azurerm_storage_account" "account" {
   is_hns_enabled                  = var.is_hns_enabled
   min_tls_version                 = var.min_tls_version
   account_kind                    = var.account_kind
-  public_network_access_enabled   = var.public_network_access_enabled
+  public_network_access_enabled   = local.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   nfsv3_enabled                   = var.nfsv3_enabled
   access_tier                     = var.access_tier
@@ -37,20 +45,17 @@ resource "azurerm_storage_account" "account" {
   allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
 
-  dynamic "network_rules" {
-    for_each = var.network_rules != null ? ["true"] : []
-    content {
-      default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
-      bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
-      ip_rules                   = var.network_rules.ip_rules != null ? var.network_rules.ip_rules : []
-      virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
+  network_rules {
+    default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
+    bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
+    ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), var.network_rules.ip_rules) : var.network_rules.ip_rules
+    virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
 
-      dynamic "private_link_access" {
-        for_each = var.network_rules.private_link_access
-        content {
-          endpoint_resource_id = private_link_access.value.endpoint_resource_id
-          endpoint_tenant_id   = private_link_access.value.endpoint_tenant_id
-        }
+    dynamic "private_link_access" {
+      for_each = var.network_rules.private_link_access
+      content {
+        endpoint_resource_id = private_link_access.value.endpoint_resource_id
+        endpoint_tenant_id   = private_link_access.value.endpoint_tenant_id
       }
     }
   }
