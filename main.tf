@@ -140,4 +140,11 @@ resource "azurerm_private_dns_a_record" "pe_dns" {
   ttl                 = 3600
   zone_name           = replace("privatelink.${each.key}.core.windows.net", "_secondary", "") #removes _secondary from zone name because private endpoint for eg. blob and blob_secondary is privatelink.blob.core.windows.net
   provider            = azurerm.p-dns
+
+  lifecycle {
+    ignore_changes = [
+      ttl,
+      tags,
+    ]
+  }
 }
