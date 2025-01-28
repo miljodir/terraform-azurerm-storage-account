@@ -101,9 +101,9 @@ variable "allow_nested_items_to_be_public" {
 variable "network_rules" {
   description = "Network rules restricing access to the storage account."
   type = object({
-    default_action      = optional(string)
-    bypass              = optional(list(string)),
-    ip_rules            = optional(list(string)),
+    default_action      = optional(string, "Deny")
+    bypass              = optional(list(string), ["None"]),
+    ip_rules            = optional(list(string), []),
     subnet_ids          = optional(list(string)),
     private_link_access = optional(list(object({ endpoint_resource_id = string, endpoint_tenant_id = string })), [])
   })
