@@ -33,7 +33,7 @@ resource "azurerm_storage_account" "account" {
   is_hns_enabled                  = var.is_hns_enabled
   min_tls_version                 = var.min_tls_version
   account_kind                    = var.account_kind
-  public_network_access_enabled   = var.public_network_access_enabled
+  public_network_access_enabled   = local.public_network_access_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   nfsv3_enabled                   = var.nfsv3_enabled
   access_tier                     = var.access_tier
@@ -47,7 +47,7 @@ resource "azurerm_storage_account" "account" {
   network_rules {
     default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
     bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
-    ip_rules                   = try(concat(values(module.network_vars[0].known_public_ips), var.network_acls.ip_rules), [])
+    ip_rules                   = local.public_network_access_enabled ? try(concat(values(module.network_vars[0].known_public_ips), var.network_acls.ip_rules), (values(module.network_vars[0].known_public_ips))) : []
     virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
 
     dynamic "private_link_access" {
