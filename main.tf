@@ -137,19 +137,9 @@ resource "azurerm_private_endpoint" "pe" {
   }
 }
 
-resource "azurerm_private_dns_a_record" "pe_dns" {
-  for_each            = toset(var.private_endpoints)
-  name                = azurerm_storage_account.account.name
-  records             = [azurerm_private_endpoint.pe[each.key].private_service_connection[0].private_ip_address]
-  resource_group_name = var.dns_resource_group_name
-  ttl                 = 3600
-  zone_name           = replace("privatelink.${each.key}.core.windows.net", "_secondary", "") #removes _secondary from zone name because private endpoint for eg. blob and blob_secondary is privatelink.blob.core.windows.net
-  provider            = azurerm.p-dns
-
+removed {
+  from = azurerm_private_dns_a_record.pe_dns
   lifecycle {
-    ignore_changes = [
-      ttl,
-      tags,
-    ]
+    destroy = false
   }
 }
