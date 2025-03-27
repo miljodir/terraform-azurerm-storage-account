@@ -221,3 +221,9 @@ variable "static_website" {
   description = "Static website configuration."
   default     = null
 }
+
+variable "enable_soft_delete" {
+  type        = bool
+  default     = true
+  description = "Enable or disable soft delete for blobs and containers."
+}

@@ -63,13 +63,20 @@ resource "azurerm_storage_account" "account" {
   dynamic "blob_properties" {
     for_each = var.account_kind == "FileStorage" ? [] : ["blob_properties"]
     content {
-      delete_retention_policy {
-        days = var.blob_soft_delete_retention_days
+      dynamic "delete_retention_policy" {
+        for_each = var.enable_soft_delete ? ["delete_retention_policy"] : []
+        content {
+          days = var.blob_soft_delete_retention_days
+        }
       }
 
-      container_delete_retention_policy {
-        days = var.container_soft_delete_retention_days
+      dynamic "container_delete_retention_policy" {
+        for_each = var.enable_soft_delete ? ["container_delete_retention_policy"] : []
+        content {
+          days = var.container_soft_delete_retention_days
+        }
       }
+
       versioning_enabled       = var.enable_versioning
       last_access_time_enabled = var.enable_versioning
       change_feed_enabled      = var.enable_versioning
