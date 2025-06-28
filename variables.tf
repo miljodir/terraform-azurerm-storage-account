@@ -128,6 +128,19 @@ variable "container_soft_delete_retention_days" {
   default     = 7
 }
 
+variable "enable_restore_policy" {
+  type        = bool
+  description = "Is restore policy enabled? Defaults to false."
+  default     = false
+  
+}
+
+variable "restore_policy_days" {
+  type        = number
+  description = "Specifies the number of days that the restore policy should be retained, between 1 and 365 days. Defaults to 7"
+  default     = 35
+}
+
 variable "enable_versioning" {
   type        = bool
   description = "Is versioning enabled? Default to false."
