@@ -77,6 +77,14 @@ resource "azurerm_storage_account" "account" {
         }
       }
 
+      dynamic "restore_policy" {
+        for_each = var.enable_restore_policy ? ["restore_policy"] : []
+        content {
+          days = var.restore_policy_days
+        }
+        
+      }
+
       versioning_enabled       = var.enable_versioning
       last_access_time_enabled = var.enable_versioning
       change_feed_enabled      = var.enable_versioning
