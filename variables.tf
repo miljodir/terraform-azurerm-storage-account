@@ -138,7 +138,7 @@ variable "enable_restore_policy" {
 variable "restore_policy_days" {
   type        = number
   description = "Specifies the number of days that the restore policy should be retained, between 1 and 365 days. Defaults to 7"
-  default     = 35
+  default     = 30
 }
 
 variable "enable_versioning" {
