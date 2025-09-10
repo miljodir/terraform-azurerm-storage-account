@@ -132,7 +132,7 @@ variable "enable_restore_policy" {
   type        = bool
   description = "Is restore policy enabled? Defaults to false."
   default     = false
-  
+
 }
 
 variable "restore_policy_days" {
@@ -239,4 +239,15 @@ variable "enable_soft_delete" {
   type        = bool
   default     = true
   description = "Enable or disable soft delete for blobs and containers."
+}
+
+variable "provisioned_billing_model_version" {
+  type        = string
+  description = "The provisioned billing model version of the storage account. Possible values are null and `V2`. Defaults to null."
+  default     = null
+  validation {
+    condition     = var.provisioned_billing_model_version == null || var.provisioned_billing_model_version == "V2"
+    error_message = "provisioned_billing_model_version must be either V1, V2 or null."
+  }
+
 }

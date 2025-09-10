@@ -25,22 +25,23 @@ resource "random_string" "unique" {
 }
 
 resource "azurerm_storage_account" "account" {
-  resource_group_name             = var.resource_group_name
-  name                            = local.storage_account_name
-  location                        = var.location
-  account_tier                    = local.account_tier
-  account_replication_type        = local.account_replication_type
-  shared_access_key_enabled       = var.shared_access_key_enabled
-  is_hns_enabled                  = var.is_hns_enabled
-  min_tls_version                 = var.min_tls_version
-  account_kind                    = var.account_kind
-  public_network_access_enabled   = local.public_network_access_enabled
-  allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
-  nfsv3_enabled                   = var.nfsv3_enabled
-  access_tier                     = var.access_tier
-  https_traffic_only_enabled      = var.https_only
-  local_user_enabled              = var.sftp_enabled && var.is_hns_enabled
-  sftp_enabled                    = var.sftp_enabled
+  resource_group_name               = var.resource_group_name
+  name                              = local.storage_account_name
+  location                          = var.location
+  account_tier                      = local.account_tier
+  account_replication_type          = local.account_replication_type
+  provisioned_billing_model_version = var.provisioned_billing_model_version
+  shared_access_key_enabled         = var.shared_access_key_enabled
+  is_hns_enabled                    = var.is_hns_enabled
+  min_tls_version                   = var.min_tls_version
+  account_kind                      = var.account_kind
+  public_network_access_enabled     = local.public_network_access_enabled
+  allow_nested_items_to_be_public   = var.allow_nested_items_to_be_public
+  nfsv3_enabled                     = var.nfsv3_enabled
+  access_tier                       = var.access_tier
+  https_traffic_only_enabled        = var.https_only
+  local_user_enabled                = var.sftp_enabled && var.is_hns_enabled
+  sftp_enabled                      = var.sftp_enabled
 
   allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
@@ -82,7 +83,7 @@ resource "azurerm_storage_account" "account" {
         content {
           days = var.restore_policy_days
         }
-        
+
       }
 
       versioning_enabled       = var.enable_versioning
