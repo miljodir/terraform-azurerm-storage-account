@@ -36,7 +36,7 @@ variable "subnet_id" {
 variable "private_endpoints" {
   type        = list(any)
   description = "List of private endpoints that should be enabled. Supported values: blob, blob_secondary, table, table_secondary, queue, queue_secondary, file, file_secondary, web, web_secondary, dfs, dfs_secondary"
-  default     = null
+  default     = []
 }
 
 variable "unique" {
