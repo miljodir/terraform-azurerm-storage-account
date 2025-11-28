@@ -86,9 +86,10 @@ resource "azurerm_storage_account" "account" {
 
       }
 
-      versioning_enabled       = var.enable_versioning
-      last_access_time_enabled = var.enable_versioning
-      change_feed_enabled      = var.enable_versioning
+      versioning_enabled            = var.blob_properties == null ? var.enable_versioning : var.blob_properties.versioning_enabled
+      last_access_time_enabled      = var.blob_properties == null ? var.enable_versioning : var.blob_properties.last_access_time_enabled
+      change_feed_enabled           = var.blob_properties == null ? var.enable_versioning : var.blob_properties.change_feed_enabled
+      change_feed_retention_in_days = var.blob_properties == null ? null : var.blob_properties.change_feed_retention_in_days
     }
   }
 

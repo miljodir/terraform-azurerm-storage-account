@@ -141,18 +141,32 @@ variable "restore_policy_days" {
   default     = 30
 }
 
+variable "blob_properties" {
+  type = object({
+    versioning_enabled            = optional(bool)
+    change_feed_enabled           = optional(bool)
+    change_feed_retention_in_days = optional(number)
+    last_access_time_enabled      = optional(bool)
+  })
+  default     = null
+  description = "Specifies blob service properties."
+}
+
+# todo: remove in favour of blob_properties variable in next major version
 variable "enable_versioning" {
   type        = bool
   description = "Is versioning enabled? Default to false."
   default     = false
 }
 
+# This one is unused in the module
 variable "last_access_time_enabled" {
   type        = bool
   description = "Is the last access time based tracking enabled? Default to false."
   default     = false
 }
 
+# This one is unused in the module
 variable "change_feed_enabled" {
   type        = bool
   description = "Is the blob service properties for change feed events enabled? Defaults to false."
