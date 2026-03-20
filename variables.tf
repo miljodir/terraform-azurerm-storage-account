@@ -193,7 +193,8 @@ variable "https_only" {
 
 variable "azure_files_authentication" {
   type = object({
-    directory_type = string
+    directory_type                 = string
+    default_share_level_permission = optional(string, "None")
     active_directory = optional(object({
       domain_guid         = optional(string, null)
       domain_name         = optional(string, null)
