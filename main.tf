@@ -46,17 +46,20 @@ resource "azurerm_storage_account" "account" {
   allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
 
-  network_rules {
-    default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
-    bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
-    ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), var.network_rules.ip_rules) : var.network_rules.ip_rules
-    virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
+  dynamic "network_rules" {
+    for_each = (var.network_rules.default_action != null ? var.network_rules.default_action : "Deny") == "Deny" ? [var.network_rules] : []
+    content {
+      default_action             = network_rules.value.default_action != null ? network_rules.value.default_action : "Deny"
+      bypass                     = network_rules.value.bypass != null ? network_rules.value.bypass : ["None"]
+      ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules
+      virtual_network_subnet_ids = network_rules.value.subnet_ids != null ? network_rules.value.subnet_ids : []
 
-    dynamic "private_link_access" {
-      for_each = var.network_rules.private_link_access
-      content {
-        endpoint_resource_id = private_link_access.value.endpoint_resource_id
-        endpoint_tenant_id   = private_link_access.value.endpoint_tenant_id
+      dynamic "private_link_access" {
+        for_each = network_rules.value.private_link_access
+        content {
+          endpoint_resource_id = private_link_access.value.endpoint_resource_id
+          endpoint_tenant_id   = private_link_access.value.endpoint_tenant_id
+        }
       }
     }
   }
