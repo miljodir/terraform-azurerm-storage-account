@@ -52,7 +52,7 @@ variable "unique" {
 
 variable "enable_advanced_threat_protection" {
   type        = bool
-  description = "Enable or disable advanced threat protection? Defaults to false."
+  description = "Disable Azure Defender for Storage? Defaults to false."
   default     = false
 }
 
