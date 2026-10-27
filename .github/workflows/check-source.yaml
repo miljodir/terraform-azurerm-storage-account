@@ -94,11 +94,11 @@ jobs:
 
           assert variables["allow_known_public_ips"]["default"] is None
           assert locals_["allow_known_pips"] == '${var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"}'
-          assert locals_["public_network_access_enabled"] == "${local.allow_known_pips ? true : var.public_network_access_enabled ? true : false}"
+          source_assignment("public_network_access_enabled", "local.allow_known_pips ? true : var.public_network_access_enabled ? true : false")
           network = parsed["main.tf"]["module"][0]["network_vars"]
           assert network["count"] == "${local.allow_known_pips ? 1 : 0}"
           rules = dynamic(account, "network_rules")["content"][0]
-          assert rules["ip_rules"] == "${local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules}"
+          source_assignment("ip_rules", "local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules")
           for override, group, public, expected in [
               (None, "d-example", False, True),
               (None, "p-example", False, False),
