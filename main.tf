@@ -5,14 +5,14 @@ locals {
 
   unique                        = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
   account_tier                  = split("_", var.sku_name)[0]
-  account_replication_type      = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
+  account_replication_type      = split("_", var.sku_name)[1]
   public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
-  allow_known_pips              = split("-", var.resource_group_name)[0] == "d" ? true : false
+  allow_known_pips              = var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"
 }
 
 module "network_vars" {
   # private module used for public IP whitelisting
-  count  = local.public_network_access_enabled == true ? 1 : 0
+  count  = local.allow_known_pips ? 1 : 0
   source = "git@github.com:miljodir/cp-shared.git//modules/public_nw_ips?ref=public_nw_ips/v1"
 }
 
@@ -96,6 +96,29 @@ resource "azurerm_storage_account" "account" {
     }
   }
 
+  dynamic "share_properties" {
+    for_each = var.share_properties == null ? [] : [var.share_properties]
+    content {
+      dynamic "retention_policy" {
+        for_each = share_properties.value.retention_policy == null ? [] : [share_properties.value.retention_policy]
+        content {
+          days = retention_policy.value.days
+        }
+      }
+
+      dynamic "smb" {
+        for_each = share_properties.value.smb == null ? [] : [share_properties.value.smb]
+        content {
+          versions                        = smb.value.versions
+          authentication_types            = smb.value.authentication_types
+          kerberos_ticket_encryption_type = smb.value.kerberos_ticket_encryption_type
+          channel_encryption_type         = smb.value.channel_encryption_type
+          multichannel_enabled            = smb.value.multichannel_enabled
+        }
+      }
+    }
+  }
+
   dynamic "azure_files_authentication" {
     for_each = var.azure_files_authentication == null ? [] : [
       var.azure_files_authentication
@@ -148,6 +171,14 @@ resource "azurerm_private_endpoint" "pe" {
     private_connection_resource_id = azurerm_storage_account.account.id
     subresource_names              = [each.key]
     is_manual_connection           = false
+  }
+
+  dynamic "private_dns_zone_group" {
+    for_each = length(lookup(var.private_dns_zone_ids, each.key, [])) == 0 ? [] : [var.private_dns_zone_ids[each.key]]
+    content {
+      name                 = "default"
+      private_dns_zone_ids = private_dns_zone_group.value
+    }
   }
 
   lifecycle {

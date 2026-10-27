@@ -39,6 +39,13 @@ variable "private_endpoints" {
   default     = []
 }
 
+variable "private_dns_zone_ids" {
+  type        = map(list(string))
+  description = "Existing private DNS zone resource IDs keyed by private endpoint subresource (for example file). Empty or omitted lists do not create a DNS zone group."
+  default     = {}
+  nullable    = false
+}
+
 variable "unique" {
   type        = string
   description = "Provide a unique string if you want to use an already generated one."
@@ -90,6 +97,12 @@ variable "public_network_access_enabled" {
   type        = bool
   description = "Is public network access enabled? Defaults to true."
   default     = true # TODO - default to false when v3 is released
+}
+
+variable "allow_known_public_ips" {
+  type        = bool
+  description = "Allow known public IPs and enable public network access. Null retains inference from a d-* resource group name; false disables the override and known IP lookup/rules, but does not override public_network_access_enabled."
+  default     = null
 }
 
 variable "allow_nested_items_to_be_public" {
@@ -217,6 +230,23 @@ variable "azure_files_authentication" {
  - `netbios_domain_name` - (Required) Specifies the NetBIOS domain name.
  - `storage_sid` - (Required) Specifies the security identifier (SID) for Azure Storage.
 EOT
+}
+
+variable "share_properties" {
+  type = object({
+    retention_policy = optional(object({
+      days = number
+    }))
+    smb = optional(object({
+      versions                        = optional(set(string))
+      authentication_types            = optional(set(string))
+      kerberos_ticket_encryption_type = optional(set(string))
+      channel_encryption_type         = optional(set(string))
+      multichannel_enabled            = optional(bool)
+    }))
+  })
+  description = "Azure Files service properties, including FileStorage accounts. Null leaves share properties unmanaged; omitted nested properties use provider defaults."
+  default     = null
 }
 
 variable "sftp_enabled" {

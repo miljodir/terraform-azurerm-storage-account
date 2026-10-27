@@ -1,0 +1,119 @@
+name: Check module source
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - "**.tf"
+      - ".github/workflows/check-source.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install HCL parser
+        run: python -m pip install python-hcl2==7.3.1
+      - name: Check HCL and private FileStorage wiring (not a Terraform plan)
+        shell: python
+        run: |
+          import pathlib
+          import re
+          import hcl2
+
+          root = pathlib.Path(".")
+          parsed = {}
+          for path in root.glob("*.tf"):
+              with path.open() as stream:
+                  parsed[path.name] = hcl2.load(stream)
+          main = (root / "main.tf").read_text()
+          variables = {
+              name: body
+              for block in parsed["variables.tf"]["variable"]
+              for name, body in block.items()
+          }
+          locals_ = parsed["main.tf"]["locals"][0]
+          resources = {
+              (kind, name): body
+              for block in parsed["main.tf"]["resource"]
+              for kind, entries in block.items()
+              for name, body in entries.items()
+          }
+          account = resources["azurerm_storage_account", "account"]
+          endpoint = resources["azurerm_private_endpoint", "pe"]
+          def dynamic(body, name):
+              return next(block[name] for block in body["dynamic"] if name in block)
+
+          # Exact expression checks guard the actual HCL wiring, not a plan.
+          assert locals_["account_replication_type"] == '${split("_", var.sku_name)[1]}'
+          for sku, expected in [
+              ("Premium_LRS", "LRS"), ("Premium_ZRS", "ZRS"),
+              ("Standard_RAGRS", "RAGRS"),
+          ]:
+              assert sku.split("_")[1] == expected
+          print("PASS: Premium_LRS/ZRS and standard replication source")
+
+          assert variables["share_properties"]["default"] is None
+          share = dynamic(account, "share_properties")
+          assert share["for_each"] == "${var.share_properties == null ? [] : [var.share_properties]}"
+          share_content = share["content"][0]
+          retention = dynamic(share_content, "retention_policy")
+          assert retention["content"][0]["days"] == "${retention_policy.value.days}"
+          smb = dynamic(share_content, "smb")["content"][0]
+          for key in [
+              "versions", "authentication_types", "kerberos_ticket_encryption_type",
+              "channel_encryption_type", "multichannel_enabled",
+          ]:
+              assert smb[key] == "${smb.value." + key + "}"
+              assert key in variables["share_properties"]["type"]
+          assert dynamic(account, "blob_properties")["for_each"] == '${var.account_kind == "FileStorage" ? [] : ["blob_properties"]}'
+          print("PASS: nullable share properties, SMB wiring, FileStorage blob exclusion")
+
+          assert endpoint["subnet_id"] == "${var.subnet_id}"
+          assert variables["private_dns_zone_ids"]["type"] == "${map(list(string))}"
+          assert variables["private_dns_zone_ids"]["default"] == {}
+          dns = dynamic(endpoint, "private_dns_zone_group")
+          assert dns["for_each"] == '${length(lookup(var.private_dns_zone_ids, each.key, [])) == 0 ? [] : [var.private_dns_zone_ids[each.key]]}'
+          assert dns["content"][0]["private_dns_zone_ids"] == "${private_dns_zone_group.value}"
+          assert "${private_dns_zone_group}" in endpoint["lifecycle"][0]["ignore_changes"]
+          print("PASS: explicit subnet/DNS wiring, empty DNS default, existing lifecycle")
+
+          assert variables["allow_known_public_ips"]["default"] is None
+          assert locals_["allow_known_pips"] == '${var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"}'
+          assert locals_["public_network_access_enabled"] == "${local.allow_known_pips ? true : var.public_network_access_enabled ? true : false}"
+          network = parsed["main.tf"]["module"][0]["network_vars"]
+          assert network["count"] == "${local.allow_known_pips ? 1 : 0}"
+          rules = dynamic(account, "network_rules")["content"][0]
+          assert rules["ip_rules"] == "${local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules}"
+          for override, group, public, expected in [
+              (None, "d-example", False, True),
+              (None, "p-example", False, False),
+              (False, "d-example", False, False),
+              (False, "d-example", True, True),
+              (True, "p-example", False, True),
+          ]:
+              known = override if override is not None else group.split("-")[0] == "d"
+              assert (known or public) == expected
+          print("PASS: default inference, explicit private dev opt-out and lookup/rule gating")
+
+          assert variables["allowed_copy_scope"]["default"] == "AAD"
+          assert variables["network_rules"]["default"]["default_action"] == "Deny"
+          assert variables["network_rules"]["default"]["bypass"] == ["None"]
+          assert variables["network_rules"]["default"]["ip_rules"] == []
+          assert variables["network_rules"]["default"]["subnet_ids"] == []
+          assert account["local_user_enabled"] == "${var.sftp_enabled && var.is_hns_enabled}"
+          assert parsed["providers.tf"]["terraform"][0]["required_version"] == ">= 1.7, < 2.0"
+          outputs = {name for block in parsed["outputs.tf"]["output"] for name in block}
+          assert outputs == {"storage_account", "private_endpoints"}
+          assert not re.search(r"\bprevent_destroy\b", main)
+          assert not any(kind == "azurerm_management_lock" for kind, name in resources)
+          print("PASS: existing defaults/outputs, Terraform minimum, no added protections")
+          print("Static source checks only. Terraform init/plan blocked by internal cp-shared SSH dependency without authorized CI access.")
