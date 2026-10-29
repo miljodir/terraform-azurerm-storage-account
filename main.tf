@@ -3,11 +3,18 @@ locals {
   generated_storage_account_name = var.storage_account_name == null ? "${local.storage_prefix}${var.purpose}${local.unique}" : ""
   storage_prefix                 = replace(var.resource_group_name, "-", "")
 
-  unique                   = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
-  account_tier             = (var.account_kind == "FileStorage" ? "Premium" : split("_", var.sku_name)[0])
-  account_replication_type = (local.account_tier == "Premium" ? "LRS" : split("_", var.sku_name)[1])
+  unique                        = var.unique == null ? try(random_string.unique[0].result, null) : var.unique
+  account_tier                  = split("_", var.sku_name)[0]
+  account_replication_type      = split("_", var.sku_name)[1]
+  public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
+  allow_known_pips              = var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"
+  minimum_tls_version           = startswith(local.storage_account_name, "d") ? "TLS1_3" : var.min_tls_version
+}
 
-  minimum_tls_version = startswith(local.storage_account_name, "d") ? "TLS1_3" : var.min_tls_version
+module "network_vars" {
+  # private module used for public IP whitelisting
+  count  = local.allow_known_pips ? 1 : 0
+  source = "git@github.com:miljodir/cp-shared.git//modules/public_nw_ips?ref=public_nw_ips/v1"
 }
 
 resource "random_string" "unique" {
@@ -19,36 +26,37 @@ resource "random_string" "unique" {
 }
 
 resource "azurerm_storage_account" "account" {
-  resource_group_name             = var.resource_group_name
-  name                            = local.storage_account_name
-  location                        = var.location
-  account_tier                    = local.account_tier
-  account_replication_type        = local.account_replication_type
-  shared_access_key_enabled       = var.shared_access_key_enabled
-  is_hns_enabled                  = var.is_hns_enabled
-  min_tls_version                 = local.minimum_tls_version
-  account_kind                    = var.account_kind
-  public_network_access_enabled   = var.public_network_access_enabled
-  allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
-  nfsv3_enabled                   = var.nfsv3_enabled
-  access_tier                     = var.access_tier
-  enable_https_traffic_only       = var.https_only
-  local_user_enabled              = var.sftp_enabled && var.is_hns_enabled
-  sftp_enabled                    = var.sftp_enabled
+  resource_group_name               = var.resource_group_name
+  name                              = local.storage_account_name
+  location                          = var.location
+  account_tier                      = local.account_tier
+  account_replication_type          = local.account_replication_type
+  provisioned_billing_model_version = var.provisioned_billing_model_version
+  shared_access_key_enabled         = var.shared_access_key_enabled
+  is_hns_enabled                    = var.is_hns_enabled
+  min_tls_version                   = local.minimum_tls_version
+  account_kind                      = var.account_kind
+  public_network_access_enabled     = local.public_network_access_enabled
+  allow_nested_items_to_be_public   = var.allow_nested_items_to_be_public
+  nfsv3_enabled                     = var.nfsv3_enabled
+  access_tier                       = var.access_tier
+  https_traffic_only_enabled        = var.https_only
+  local_user_enabled                = var.sftp_enabled && var.is_hns_enabled
+  sftp_enabled                      = var.sftp_enabled
 
   allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
 
   dynamic "network_rules" {
-    for_each = var.network_rules != null ? ["true"] : []
+    for_each = (var.network_rules.default_action != null ? var.network_rules.default_action : "Deny") == "Deny" ? [var.network_rules] : []
     content {
-      default_action             = var.network_rules.default_action != null ? var.network_rules.default_action : "Deny"
-      bypass                     = var.network_rules.bypass != null ? var.network_rules.bypass : ["None"]
-      ip_rules                   = var.network_rules.ip_rules != null ? var.network_rules.ip_rules : []
-      virtual_network_subnet_ids = var.network_rules.subnet_ids != null ? var.network_rules.subnet_ids : []
+      default_action             = network_rules.value.default_action != null ? network_rules.value.default_action : "Deny"
+      bypass                     = network_rules.value.bypass != null ? network_rules.value.bypass : ["None"]
+      ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules
+      virtual_network_subnet_ids = network_rules.value.subnet_ids != null ? network_rules.value.subnet_ids : []
 
       dynamic "private_link_access" {
-        for_each = var.network_rules.private_link_access
+        for_each = network_rules.value.private_link_access
         content {
           endpoint_resource_id = private_link_access.value.endpoint_resource_id
           endpoint_tenant_id   = private_link_access.value.endpoint_tenant_id
@@ -60,16 +68,55 @@ resource "azurerm_storage_account" "account" {
   dynamic "blob_properties" {
     for_each = var.account_kind == "FileStorage" ? [] : ["blob_properties"]
     content {
-      delete_retention_policy {
-        days = var.blob_soft_delete_retention_days
+      dynamic "delete_retention_policy" {
+        for_each = var.enable_soft_delete ? ["delete_retention_policy"] : []
+        content {
+          days = var.blob_soft_delete_retention_days
+        }
       }
 
-      container_delete_retention_policy {
-        days = var.container_soft_delete_retention_days
+      dynamic "container_delete_retention_policy" {
+        for_each = var.enable_soft_delete ? ["container_delete_retention_policy"] : []
+        content {
+          days = var.container_soft_delete_retention_days
+        }
       }
-      versioning_enabled       = var.enable_versioning
-      last_access_time_enabled = var.enable_versioning
-      change_feed_enabled      = var.enable_versioning
+
+      dynamic "restore_policy" {
+        for_each = var.enable_restore_policy ? ["restore_policy"] : []
+        content {
+          days = var.restore_policy_days
+        }
+
+      }
+
+      versioning_enabled            = var.blob_properties == null ? var.enable_versioning : var.blob_properties.versioning_enabled
+      last_access_time_enabled      = var.blob_properties == null ? var.enable_versioning : var.blob_properties.last_access_time_enabled
+      change_feed_enabled           = var.blob_properties == null ? var.enable_versioning : var.blob_properties.change_feed_enabled
+      change_feed_retention_in_days = var.blob_properties == null ? null : var.blob_properties.change_feed_retention_in_days
+    }
+  }
+
+  dynamic "share_properties" {
+    for_each = var.share_properties == null ? [] : [var.share_properties]
+    content {
+      dynamic "retention_policy" {
+        for_each = share_properties.value.retention_policy == null ? [] : [share_properties.value.retention_policy]
+        content {
+          days = retention_policy.value.days
+        }
+      }
+
+      dynamic "smb" {
+        for_each = share_properties.value.smb == null ? [] : [share_properties.value.smb]
+        content {
+          versions                        = smb.value.versions
+          authentication_types            = smb.value.authentication_types
+          kerberos_ticket_encryption_type = smb.value.kerberos_ticket_encryption_type
+          channel_encryption_type         = smb.value.channel_encryption_type
+          multichannel_enabled            = smb.value.multichannel_enabled
+        }
+      }
     }
   }
 
@@ -78,7 +125,8 @@ resource "azurerm_storage_account" "account" {
       var.azure_files_authentication
     ]
     content {
-      directory_type = azure_files_authentication.value.directory_type
+      directory_type                 = azure_files_authentication.value.directory_type
+      default_share_level_permission = azure_files_authentication.value.default_share_level_permission
 
       dynamic "active_directory" {
         for_each = azure_files_authentication.value.active_directory == null ? [] : [
@@ -95,6 +143,15 @@ resource "azurerm_storage_account" "account" {
       }
     }
   }
+
+}
+
+resource "azurerm_storage_account_static_website" "this" {
+  count = var.static_website == null ? 0 : 1
+
+  storage_account_id = azurerm_storage_account.account.id
+  index_document     = var.static_website.index_document
+  error_404_document = var.static_website.error_404_document
 }
 
 resource "azurerm_advanced_threat_protection" "atp" {
@@ -117,18 +174,26 @@ resource "azurerm_private_endpoint" "pe" {
     is_manual_connection           = false
   }
 
+  dynamic "private_dns_zone_group" {
+    for_each = length(lookup(var.private_dns_zone_ids, each.key, [])) == 0 ? [] : [var.private_dns_zone_ids[each.key]]
+    content {
+      name                 = "default"
+      private_dns_zone_ids = private_dns_zone_group.value
+    }
+  }
+
   lifecycle {
     # Avoid recreation of the private endpoint due to moving to central module
-    ignore_changes = [private_service_connection[0].name, name]
+    ignore_changes = [
+      private_service_connection[0].name, name,
+      private_dns_zone_group,
+    ]
   }
 }
 
-resource "azurerm_private_dns_a_record" "pe_dns" {
-  for_each            = toset(var.private_endpoints)
-  name                = azurerm_storage_account.account.name
-  records             = [azurerm_private_endpoint.pe[each.key].private_service_connection[0].private_ip_address]
-  resource_group_name = var.dns_resource_group_name
-  ttl                 = 3600
-  zone_name           = replace("privatelink.${each.key}.core.windows.net", "_secondary", "") #removes _secondary from zone name because private endpoint for eg. blob and blob_secondary is privatelink.blob.core.windows.net
-  provider            = azurerm.p-dns
+removed {
+  from = azurerm_private_dns_a_record.pe_dns
+  lifecycle {
+    destroy = false
+  }
 }

@@ -36,7 +36,14 @@ variable "subnet_id" {
 variable "private_endpoints" {
   type        = list(any)
   description = "List of private endpoints that should be enabled. Supported values: blob, blob_secondary, table, table_secondary, queue, queue_secondary, file, file_secondary, web, web_secondary, dfs, dfs_secondary"
-  default     = null
+  default     = []
+}
+
+variable "private_dns_zone_ids" {
+  type        = map(list(string))
+  description = "Existing private DNS zone resource IDs keyed by private endpoint subresource (for example file). Empty or omitted lists do not create a DNS zone group."
+  default     = {}
+  nullable    = false
 }
 
 variable "unique" {
@@ -98,18 +105,24 @@ variable "public_network_access_enabled" {
   default     = true # TODO - default to false when v3 is released
 }
 
+variable "allow_known_public_ips" {
+  type        = bool
+  description = "Allow known public IPs and enable public network access. Null retains inference from a d-* resource group name; false disables the override and known IP lookup/rules, but does not override public_network_access_enabled."
+  default     = null
+}
+
 variable "allow_nested_items_to_be_public" {
   type        = bool
-  description = "Allow nested items to be public? Defaults to true."
-  default     = true # TODO - default to false when v3 is released
+  description = "Allow nested items to be public? Defaults to false."
+  default     = false
 }
 
 variable "network_rules" {
   description = "Network rules restricing access to the storage account."
   type = object({
-    default_action      = optional(string)
-    bypass              = optional(list(string)),
-    ip_rules            = optional(list(string)),
+    default_action      = optional(string, "Deny")
+    bypass              = optional(list(string), ["None"]),
+    ip_rules            = optional(list(string), []),
     subnet_ids          = optional(list(string)),
     private_link_access = optional(list(object({ endpoint_resource_id = string, endpoint_tenant_id = string })), [])
   })
@@ -134,18 +147,45 @@ variable "container_soft_delete_retention_days" {
   default     = 7
 }
 
+variable "enable_restore_policy" {
+  type        = bool
+  description = "Is restore policy enabled? Defaults to false."
+  default     = false
+
+}
+
+variable "restore_policy_days" {
+  type        = number
+  description = "Specifies the number of days that the restore policy should be retained, between 1 and 365 days. Defaults to 7"
+  default     = 30
+}
+
+variable "blob_properties" {
+  type = object({
+    versioning_enabled            = optional(bool)
+    change_feed_enabled           = optional(bool)
+    change_feed_retention_in_days = optional(number)
+    last_access_time_enabled      = optional(bool)
+  })
+  default     = null
+  description = "Specifies blob service properties."
+}
+
+# todo: remove in favour of blob_properties variable in next major version
 variable "enable_versioning" {
   type        = bool
   description = "Is versioning enabled? Default to false."
   default     = false
 }
 
+# This one is unused in the module
 variable "last_access_time_enabled" {
   type        = bool
   description = "Is the last access time based tracking enabled? Default to false."
   default     = false
 }
 
+# This one is unused in the module
 variable "change_feed_enabled" {
   type        = bool
   description = "Is the blob service properties for change feed events enabled? Defaults to false."
@@ -172,7 +212,8 @@ variable "https_only" {
 
 variable "azure_files_authentication" {
   type = object({
-    directory_type = string
+    directory_type                 = string
+    default_share_level_permission = optional(string, "None")
     active_directory = optional(object({
       domain_guid         = optional(string, null)
       domain_name         = optional(string, null)
@@ -197,6 +238,23 @@ variable "azure_files_authentication" {
 EOT
 }
 
+variable "share_properties" {
+  type = object({
+    retention_policy = optional(object({
+      days = number
+    }))
+    smb = optional(object({
+      versions                        = optional(set(string))
+      authentication_types            = optional(set(string))
+      kerberos_ticket_encryption_type = optional(set(string))
+      channel_encryption_type         = optional(set(string))
+      multichannel_enabled            = optional(bool)
+    }))
+  })
+  description = "Azure Files service properties, including FileStorage accounts. Null leaves share properties unmanaged; omitted nested properties use provider defaults."
+  default     = null
+}
+
 variable "sftp_enabled" {
   type        = bool
   description = "Is SFTP enabled? Defaults to false."
@@ -217,4 +275,30 @@ variable "cross_tenant_replication_enabled" {
   type        = bool
   description = "Is support for cross-tenant replication enabled? Defaults to false."
   default     = false
+}
+
+variable "static_website" {
+  type = object({
+    index_document     = optional(string)
+    error_404_document = optional(string)
+  })
+  description = "Static website configuration."
+  default     = null
+}
+
+variable "enable_soft_delete" {
+  type        = bool
+  default     = true
+  description = "Enable or disable soft delete for blobs and containers."
+}
+
+variable "provisioned_billing_model_version" {
+  type        = string
+  description = "The provisioned billing model version of the storage account. Possible values are null and `V2`. Defaults to null."
+  default     = null
+  validation {
+    condition     = var.provisioned_billing_model_version == null || var.provisioned_billing_model_version == "V2"
+    error_message = "provisioned_billing_model_version must be either V1, V2 or null."
+  }
+
 }

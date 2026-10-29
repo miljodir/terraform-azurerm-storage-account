@@ -1,10 +1,9 @@
 terraform {
-  required_version = "~> 1.5"
+  required_version = ">= 1.7, < 2.0"
   required_providers {
     azurerm = {
-      source                = "hashicorp/azurerm"
-      version               = "~> 3.0"
-      configuration_aliases = [azurerm.p-dns]
+      source  = "hashicorp/azurerm"
+      version = "> 4.0, < 6.0"
     }
     random = {
       source  = "hashicorp/random"
