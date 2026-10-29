@@ -67,6 +67,17 @@ resource "azurerm_storage_account" "account" {
   dynamic "blob_properties" {
     for_each = var.account_kind == "FileStorage" ? [] : ["blob_properties"]
     content {
+      dynamic "cors_rule" {
+        for_each = var.cors_rules
+        content {
+          allowed_origins    = cors_rule.value.allowed_origins
+          allowed_methods    = cors_rule.value.allowed_methods
+          allowed_headers    = cors_rule.value.allowed_headers
+          exposed_headers    = cors_rule.value.exposed_headers
+          max_age_in_seconds = cors_rule.value.max_age_in_seconds
+        }
+      }
+
       dynamic "delete_retention_policy" {
         for_each = var.enable_soft_delete ? ["delete_retention_policy"] : []
         content {
@@ -151,35 +162,6 @@ resource "azurerm_storage_account_static_website" "this" {
   storage_account_id = azurerm_storage_account.account.id
   index_document     = var.static_website.index_document
   error_404_document = var.static_website.error_404_document
-}
-
-resource "azapi_update_resource" "blob_service_cors" {
-  count = length(var.cors_rules) == 0 ? 0 : 1
-
-  type        = "Microsoft.Storage/storageAccounts/blobServices@2023-01-01"
-  resource_id = "${azurerm_storage_account.account.id}/blobServices/default"
-  body = {
-    properties = {
-      cors = {
-        corsRules = [
-          for rule in var.cors_rules : {
-            allowedOrigins  = rule.allowed_origins
-            allowedMethods  = rule.allowed_methods
-            allowedHeaders  = rule.allowed_headers
-            exposedHeaders  = rule.exposed_headers
-            maxAgeInSeconds = rule.max_age_in_seconds
-          }
-        ]
-      }
-    }
-  }
-
-  lifecycle {
-    precondition {
-      condition     = var.account_kind != "FileStorage"
-      error_message = "cors_rules configure the Blob service and cannot be used with FileStorage accounts."
-    }
-  }
 }
 
 resource "azurerm_advanced_threat_protection" "atp" {

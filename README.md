@@ -85,10 +85,12 @@ for replication changes and Azure migration constraints.
 ## Blob service CORS
 
 Set `cors_rules` to configure CORS on the storage account's Blob service through
-the AzAPI provider. Each rule requires `allowed_origins`, `allowed_methods`,
-`allowed_headers`, `exposed_headers`, and `max_age_in_seconds`. The default empty
-list leaves CORS unmanaged; supplying rules updates the Blob service's CORS
-configuration. CORS rules are not supported for `FileStorage` accounts.
+the AzureRM provider's `blob_properties.cors_rule` block. Each rule requires
+`allowed_origins`, `allowed_methods`, `allowed_headers`, `exposed_headers`, and
+`max_age_in_seconds`. The default empty list adds no CORS rule blocks; supplying
+rules configures the Blob service.
+`FileStorage` accounts do not have Blob service properties, so CORS rules are
+only emitted for other account kinds.
 
 ```hcl
 cors_rules = [{
