@@ -8,6 +8,7 @@ locals {
   account_replication_type      = split("_", var.sku_name)[1]
   public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
   allow_known_pips              = var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"
+  minimum_tls_version           = startswith(local.storage_account_name, "d") ? "TLS1_3" : var.min_tls_version
 }
 
 module "network_vars" {
@@ -33,7 +34,7 @@ resource "azurerm_storage_account" "account" {
   provisioned_billing_model_version = var.provisioned_billing_model_version
   shared_access_key_enabled         = var.shared_access_key_enabled
   is_hns_enabled                    = var.is_hns_enabled
-  min_tls_version                   = var.min_tls_version
+  min_tls_version                   = local.minimum_tls_version
   account_kind                      = var.account_kind
   public_network_access_enabled     = local.public_network_access_enabled
   allow_nested_items_to_be_public   = var.allow_nested_items_to_be_public
