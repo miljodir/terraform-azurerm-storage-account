@@ -165,6 +165,18 @@ variable "blob_properties" {
   description = "Specifies blob service properties."
 }
 
+variable "cors_rules" {
+  type = list(object({
+    allowed_origins    = list(string)
+    allowed_methods    = list(string)
+    allowed_headers    = list(string)
+    exposed_headers    = list(string)
+    max_age_in_seconds = number
+  }))
+  description = "CORS rules for the Blob service. Each rule specifies the allowed origins, methods, headers, exposed headers, and max age."
+  default     = []
+}
+
 # todo: remove in favour of blob_properties variable in next major version
 variable "enable_versioning" {
   type        = bool

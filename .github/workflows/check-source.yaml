@@ -67,6 +67,7 @@ jobs:
               assert sku.split("_")[1] == expected
           print("PASS: Premium_LRS/ZRS and standard replication source")
 
+          assert variables["cors_rules"]["default"] == []
           assert variables["share_properties"]["default"] is None
           share = dynamic(account, "share_properties")
           source_assignment("for_each", "var.share_properties == null ? [] : [var.share_properties]")
@@ -82,6 +83,17 @@ jobs:
               assert key in variables["share_properties"]["type"]
           source_assignment("for_each", 'var.account_kind == "FileStorage" ? [] : ["blob_properties"]')
           print("PASS: nullable share properties, SMB wiring, FileStorage blob exclusion")
+
+          cors = dynamic(dynamic(account, "blob_properties")["content"][0], "cors_rule")
+          source_assignment("for_each", "var.cors_rules")
+          assert variables["cors_rules"]["default"] == []
+          for field in [
+              "allowed_origins", "allowed_methods", "allowed_headers",
+              "exposed_headers", "max_age_in_seconds",
+          ]:
+              assert cors["content"][0][field] == "${cors_rule.value." + field + "}"
+              assert field in variables["cors_rules"]["type"]
+          print("PASS: opt-in AzureRM Blob service CORS wiring")
 
           assert endpoint["subnet_id"] == "${var.subnet_id}"
           assert variables["private_dns_zone_ids"]["type"] == "${map(list(string))}"
