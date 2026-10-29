@@ -153,6 +153,35 @@ resource "azurerm_storage_account_static_website" "this" {
   error_404_document = var.static_website.error_404_document
 }
 
+resource "azapi_update_resource" "blob_service_cors" {
+  count = length(var.cors_rules) == 0 ? 0 : 1
+
+  type        = "Microsoft.Storage/storageAccounts/blobServices@2023-01-01"
+  resource_id = "${azurerm_storage_account.account.id}/blobServices/default"
+  body = {
+    properties = {
+      cors = {
+        corsRules = [
+          for rule in var.cors_rules : {
+            allowedOrigins  = rule.allowed_origins
+            allowedMethods  = rule.allowed_methods
+            allowedHeaders  = rule.allowed_headers
+            exposedHeaders  = rule.exposed_headers
+            maxAgeInSeconds = rule.max_age_in_seconds
+          }
+        ]
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.account_kind != "FileStorage"
+      error_message = "cors_rules configure the Blob service and cannot be used with FileStorage accounts."
+    }
+  }
+}
+
 resource "azurerm_advanced_threat_protection" "atp" {
   count              = var.enable_advanced_threat_protection == true ? 1 : 0
   target_resource_id = azurerm_storage_account.account.id
