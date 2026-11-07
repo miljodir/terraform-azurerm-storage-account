@@ -107,43 +107,55 @@ Guidelines:
 ## Running locally
 
 The following commands require Bash, Git, `tar`, and Terraform >= 1.7 or
-OpenTofu (verified with 1.13.9). They use mocked providers and a synthetic dependency, so no
-Azure credentials or private-module SSH access are needed.
+OpenTofu (verified with 1.13.9). They use mocked providers and a synthetic
+dependency, so no Azure credentials or private-module SSH access are needed.
 
-From the repository root, create a disposable copy of the **committed** `HEAD`
-and prepare the fixture. Uncommitted changes are not included. Do not run the
-prepare script in a working checkout: it changes `main.tf`.
-
-```bash
-set -euo pipefail
-test_dir="$(mktemp -d)"
-git archive HEAD | tar -x -C "$test_dir"
-cd "$test_dir"
-bash tests/fixtures/prepare.sh
-test_file='tests/storage_account.tftest.hcl'
-case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*) test_file='tests\storage_account.tftest.hcl' ;;
-esac
-```
+Run either complete example from the repository root. Each creates a separate
+disposable copy of the **committed** `HEAD`; uncommitted changes are not included.
+The parentheses isolate shell options, variables and directory changes from
+your interactive shell. The disposable copy is removed when the example exits.
+Do not run the prepare script in a working checkout: it changes `main.tf`.
 
 For Terraform, validate before copying the test-only output override:
 
 ```bash
-terraform init -backend=false -no-color
-terraform validate -no-color
-cp tests/overrides/storage_account_output_override.tf .
-terraform test -no-color "-filter=$test_file"
+(
+  set -euo pipefail
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf -- "$test_dir"' EXIT
+  git archive HEAD | tar -x -C "$test_dir"
+  cd "$test_dir"
+  bash tests/fixtures/prepare.sh
+  test_file='tests/storage_account.tftest.hcl'
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) test_file='tests\storage_account.tftest.hcl' ;;
+  esac
+  terraform init -backend=false -no-color
+  terraform validate -no-color
+  cp tests/overrides/storage_account_output_override.tf .
+  terraform test -no-color "-filter=$test_file"
+)
 ```
 
-For OpenTofu, return to the repository root and repeat the preparation commands
-above to create a **separate** disposable copy. Copy the output override before
-validation:
+For OpenTofu, copy the output override before validation:
 
 ```bash
-tofu init -backend=false -no-color
-cp tests/overrides/storage_account_output_override.tf .
-tofu validate -no-color
-tofu test -no-color "-filter=$test_file"
+(
+  set -euo pipefail
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf -- "$test_dir"' EXIT
+  git archive HEAD | tar -x -C "$test_dir"
+  cd "$test_dir"
+  bash tests/fixtures/prepare.sh
+  test_file='tests/storage_account.tftest.hcl'
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) test_file='tests\storage_account.tftest.hcl' ;;
+  esac
+  tofu init -backend=false -no-color
+  cp tests/overrides/storage_account_output_override.tf .
+  tofu validate -no-color
+  tofu test -no-color "-filter=$test_file"
+)
 ```
 
 Confirm the summary reports passing runs; `Success! 0 passed, 0 failed` does
