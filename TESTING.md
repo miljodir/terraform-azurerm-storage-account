@@ -58,6 +58,11 @@ private module's implementation or its availability/access controls. The
 prepare script changes only the disposable CI copy; it does not change the
 module source used by consumers.
 
+The separate `fixture-guard` CI job runs `bash tests/fixtures/test-prepare.sh`.
+It exercises the actual preparation script in disposable synthetic copies,
+checking exact substitution, unchanged similar/commented decoys, and rejection
+of changed or duplicated sources without modifying the input file.
+
 ## Writing a test
 
 ```hcl

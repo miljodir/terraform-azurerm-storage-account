@@ -11,6 +11,17 @@ permissions:
   contents: read
 
 jobs:
+  fixture-guard:
+    name: Fixture preparation guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Test exact substitution and fail-closed preparation
+        run: bash tests/fixtures/test-prepare.sh
+
   test:
     uses: miljodir/workflow-templates/.github/workflows/terraform-test.yaml@70a3d807d7a6d1969f8216c8c9e3a5108e892ddb
     with:
