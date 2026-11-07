@@ -1,16 +1,16 @@
 # Testing
 
 This module is tested with the native [`terraform test`](https://developer.hashicorp.com/terraform/language/tests)
-framework. Tests run automatically in GitHub Actions on every pull request to
-`main` (see `.github/workflows/terraform-test.yaml`).
+framework and OpenTofu's compatible native test command. Both run automatically
+in GitHub Actions on every pull request to `main` (see
+`.github/workflows/terraform-test.yaml`).
 
 ## What runs in CI
 
-| Job      | Command                              | Purpose                                         |
-| -------- | ------------------------------------ | ----------------------------------------------- |
-| Format   | `terraform fmt -check -recursive`    | Consistent formatting                           |
-| Validate | `terraform init` + `terraform validate` | Syntax, types and references are valid      |
-| Test     | `terraform test`                     | Module behaviour (defaults, wiring, validation) |
+| Engine | Commands | Purpose |
+| --- | --- | --- |
+| Terraform | `terraform fmt`, `terraform init`, `terraform validate`, `terraform test` | Formatting, configuration validity and module behaviour |
+| OpenTofu 1.13.9 | `tofu fmt`, `tofu init`, `tofu validate`, `tofu test` | The same checks using OpenTofu |
 
 ## How the tests work
 
@@ -26,6 +26,9 @@ framework. Tests run automatically in GitHub Actions on every pull request to
   listed variable validation or precondition fails.
 - Data sources and nested modules that would need real lookups can be replaced
   with `override_data` / `override_module`.
+- This module references a private Git SSH module. CI runs in a disposable copy
+  and `tests/fixtures/prepare.sh` substitutes a small synthetic module so
+  initialization does not require SSH credentials.
 
 - When tests run, the module is the *root* module. Terraform then rejects
   outputs that contain sensitive attributes unless they are marked
@@ -38,11 +41,22 @@ framework. Tests run automatically in GitHub Actions on every pull request to
   }
   ```
 
-  CI copies them into the module root right before `terraform test`.
+  The shared workflow copies them into its disposable module copy before
+  OpenTofu validation and before either engine runs tests. Terraform validation
+  runs before the output override is copied; OpenTofu validation runs with the
+  override because it rejects the sensitive output otherwise.
 
 These are unit-style tests: they verify how the module turns inputs into
 resource configuration. They do not prove that Azure accepts the configuration;
 that still happens when a consuming workload runs `terraform plan`/`apply`.
+
+## Fixture coverage and limits
+
+The synthetic network module returns only documentation-range IP addresses.
+The tests verify how this module uses those outputs, but do **not** validate the
+private module's implementation or its availability/access controls. The
+prepare script changes only the disposable CI copy; it does not change the
+module source used by consumers.
 
 ## Writing a test
 
@@ -83,7 +97,8 @@ Guidelines:
 
 ## Running locally
 
-Requires Terraform >= 1.7.
+Requires Terraform >= 1.7 or a compatible OpenTofu release. Initializing the
+unmodified configuration requires SSH access to the private module.
 
 ```sh
 terraform init -backend=false
@@ -92,7 +107,8 @@ terraform test -verbose   # include plan output
 terraform test -filter=tests/defaults.tftest.hcl
 ```
 
-Remove the copied `*_override.tf` files afterwards (they are git-ignored).
-
-If the module references internal modules over SSH, you need SSH access to
-GitHub for `terraform init` to download them.
+For credential-free local testing, use a disposable copy of the repository,
+run `bash tests/fixtures/prepare.sh` from its root before initialization, and
+copy `tests/overrides/storage_account_output_override.tf` into that copy's
+root. Do not run the prepare script against a working checkout: it intentionally
+replaces the private module source in `main.tf`.
