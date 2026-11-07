@@ -97,18 +97,47 @@ Guidelines:
 
 ## Running locally
 
-Requires Terraform >= 1.7 or a compatible OpenTofu release. Initializing the
-unmodified configuration requires SSH access to the private module.
+The following commands require Bash, Git, `tar`, and Terraform >= 1.7 or
+OpenTofu 1.13.9. They use mocked providers and a synthetic dependency, so no
+Azure credentials or private-module SSH access are needed.
 
-```sh
-terraform init -backend=false
-terraform test            # all tests
-terraform test -verbose   # include plan output
-terraform test -filter=tests/defaults.tftest.hcl
+From the repository root, create a disposable copy of the **committed** `HEAD`
+and prepare the fixture. Uncommitted changes are not included. Do not run the
+prepare script in a working checkout: it changes `main.tf`.
+
+```bash
+set -euo pipefail
+test_dir="$(mktemp -d)"
+git archive HEAD | tar -x -C "$test_dir"
+cd "$test_dir"
+bash tests/fixtures/prepare.sh
+test_file='tests/storage_account.tftest.hcl'
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) test_file='tests\storage_account.tftest.hcl' ;;
+esac
 ```
 
-For credential-free local testing, use a disposable copy of the repository,
-run `bash tests/fixtures/prepare.sh` from its root before initialization, and
-copy `tests/overrides/storage_account_output_override.tf` into that copy's
-root. Do not run the prepare script against a working checkout: it intentionally
-replaces the private module source in `main.tf`.
+For Terraform, validate before copying the test-only output override:
+
+```bash
+terraform init -backend=false -no-color
+terraform validate -no-color
+cp tests/overrides/storage_account_output_override.tf .
+terraform test -no-color "-filter=$test_file"
+```
+
+For OpenTofu, return to the repository root and repeat the preparation commands
+above to create a **separate** disposable copy. Copy the output override before
+validation:
+
+```bash
+tofu init -backend=false -no-color
+cp tests/overrides/storage_account_output_override.tf .
+tofu validate -no-color
+tofu test -no-color "-filter=$test_file"
+```
+
+Confirm the summary reports passing runs; `Success! 0 passed, 0 failed` does
+not mean the tests ran. Omit `-filter` to run all test files, or add `-verbose`
+for plan output. The fixture and output override apply only to the disposable
+copy and have the coverage limitations described above.
