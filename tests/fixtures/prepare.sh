@@ -10,10 +10,28 @@ if [[ ! -f "$module_file" || ! -f tests/fixtures/network_vars/outputs.tf ]]; the
   exit 1
 fi
 
-matches=$(sed 's/^[[:space:]]*//' "$module_file" | grep -Fxc "$private_source" || true)
-if [[ "$matches" != 1 ]]; then
+prepared_file="${module_file}.prepare.tmp.$$"
+if ! awk -v expected="$private_source" -v replacement="$fixture_source" '
+  {
+    line = $0
+    sub(/^[[:space:]]*/, "", line)
+    if (line == expected) {
+      indentation = substr($0, 1, length($0) - length(line))
+      print indentation replacement
+      matches++
+    } else {
+      print
+    }
+  }
+  END {
+    if (matches != 1) {
+      exit 1
+    }
+  }
+' "$module_file" > "$prepared_file"; then
+  rm -f "$prepared_file"
   echo "::error::Expected exactly one private network module source in main.tf"
   exit 1
 fi
 
-sed -i "s|$private_source|$fixture_source|" "$module_file"
+mv -- "$prepared_file" "$module_file"
