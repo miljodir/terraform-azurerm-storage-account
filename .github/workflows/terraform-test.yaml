@@ -25,6 +25,6 @@ jobs:
     uses: miljodir/workflow-templates/.github/workflows/terraform-test.yaml@terraform-test/v0
     with:
       engine: both
-      opentofu-version: "1.13.9"
+      opentofu-version: "1.x"
       prepare-script: tests/fixtures/prepare.sh
       test-override-directory: tests/overrides

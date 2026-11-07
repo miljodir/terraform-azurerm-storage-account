@@ -10,7 +10,11 @@ and when manually dispatched (see `.github/workflows/terraform-test.yaml`).
 | Engine | Commands | Purpose |
 | --- | --- | --- |
 | Terraform | `terraform fmt`, `terraform init`, `terraform validate`, `terraform test` | Formatting, configuration validity and module behaviour |
-| OpenTofu 1.13.9 | `tofu fmt`, `tofu init`, `tofu validate`, `tofu test` | The same checks using OpenTofu |
+| OpenTofu latest stable 1.x | `tofu fmt`, `tofu init`, `tofu validate`, `tofu test` | The same checks using OpenTofu |
+
+CI selects OpenTofu with the floating `1.x` version range, rather than a fixed
+release. OpenTofu 1.13.9 is a verified release for the local commands below;
+each CI run reports the version actually selected.
 
 ## How the tests work
 
@@ -103,7 +107,7 @@ Guidelines:
 ## Running locally
 
 The following commands require Bash, Git, `tar`, and Terraform >= 1.7 or
-OpenTofu 1.13.9. They use mocked providers and a synthetic dependency, so no
+OpenTofu (verified with 1.13.9). They use mocked providers and a synthetic dependency, so no
 Azure credentials or private-module SSH access are needed.
 
 From the repository root, create a disposable copy of the **committed** `HEAD`
