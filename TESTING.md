@@ -67,6 +67,28 @@ It exercises the actual preparation script in disposable synthetic copies,
 checking exact substitution, unchanged similar/commented decoys, and rejection
 of changed or duplicated sources without modifying the input file.
 
+## Release workflow events
+
+The separate `tag-module.yaml` workflow previews releases on opened, updated,
+reopened, and relabeled pull requests to `main` that change `**.tf` files.
+It also runs on closed pull requests with the same branch and path filters,
+but calls the shared metadata workflow only when the pull request was merged.
+An unmerged close does not generate metadata or dispatch a release.
+
+The shared `generate-release-metadata/v1` workflow supports merged
+`pull_request` events. A merged change with a release label and releasable
+module files dispatches `create_release` and `update_wiki`; the existing
+repository-dispatch jobs consume those events. The `no-release` label or no
+releasable module changes suppresses release dispatch. Workflow-only changes
+do not match the Terraform path filter. Re-running a merged-event workflow
+can dispatch again; this migration does not add release idempotency.
+
+The caller grants write permissions only to the jobs that require them and
+does not check out pull request code itself. Public-fork `pull_request` runs
+have a read-only token: release-plan comments and merged-event release
+dispatches requiring write access cannot be relied on for fork contributions.
+No elevated fork-token workaround is provided by this workflow.
+
 ## Writing a test
 
 ```hcl
