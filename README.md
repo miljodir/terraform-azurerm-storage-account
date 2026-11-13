@@ -82,6 +82,37 @@ The intentional replication bug fix now honors `Premium_ZRS` instead of silently
 creating `Premium_LRS`. Existing callers using `Premium_ZRS` must review the plan
 for replication changes and Azure migration constraints.
 
+## Storage firewall
+
+The module explicitly manages `network_rules` for both `Deny` (the default) and
+`Allow`, including changes to an existing account:
+
+```hcl
+network_rules = {
+  default_action = "Allow"
+}
+```
+
+`Allow` permits all sources when public network access is enabled; it does not
+enable `public_network_access_enabled` by itself or grant data-plane permissions.
+Review the access implications before applying a Deny-to-Allow change.
+
+AzureRM's
+[`flattenAccountNetworkRules`](https://github.com/hashicorp/terraform-provider-azurerm/blob/v4.67.0/internal/services/storage/storage_account_helpers_network.go#L36-L66)
+omits the refreshed block specifically for `Allow` with bypass `["AzureServices"]`
+and no IP, subnet, or resource-access exceptions. An explicit block matching
+that tuple would therefore produce perpetual drift. The module normalizes
+bypass to `["None"]` **only for that combination**, which does not restrict traffic
+while Allow is active. The default bypass `["None"]` already round-trips correctly.
+All other bypass/exception combinations, including known public IPs, are retained;
+Deny behavior is unchanged.
+
+This replaces the workaround from #28, which omitted every Allow block.
+Because the provider treats the omitted block as Optional+Computed, that workaround
+also left an existing Deny firewall unmanaged rather than switching it to Allow.
+After upgrading, existing Allow callers may see a one-time firewall reconciliation
+to their configured rules (and the normalization above). Review that plan.
+
 ## Blob service CORS
 
 Set `cors_rules` to configure CORS on the storage account's Blob service through
