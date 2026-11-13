@@ -268,8 +268,28 @@ run "soft_delete_can_be_disabled" {
   }
 }
 
-run "network_rules_allow_removes_block" {
-  command = plan
+run "network_rules_deny_before_allow" {
+  command = apply
+
+  variables {
+    network_rules = {
+      bypass   = ["AzureServices"]
+      ip_rules = ["203.0.113.5"]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].default_action == "Deny" &&
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices"]) &&
+      azurerm_storage_account.account.network_rules[0].ip_rules == toset(["203.0.113.5"])
+    )
+    error_message = "Deny must preserve caller bypass and IP exceptions."
+  }
+}
+
+run "network_rules_allow_after_deny" {
+  command = apply
 
   variables {
     network_rules = {
@@ -278,8 +298,141 @@ run "network_rules_allow_removes_block" {
   }
 
   assert {
-    condition     = length(azurerm_storage_account.account.network_rules) == 0
-    error_message = "The network_rules block should be omitted when default_action is Allow."
+    condition = (
+      length(azurerm_storage_account.account.network_rules) == 1 &&
+      azurerm_storage_account.account.network_rules[0].default_action == "Allow" &&
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["None"]) &&
+      length(azurerm_storage_account.account.network_rules[0].ip_rules) == 0
+    )
+    error_message = "Allow must replace Deny in existing state and remove old IP exceptions."
+  }
+}
+
+run "network_rules_deny_after_allow" {
+  command = plan
+
+  assert {
+    condition     = azurerm_storage_account.account.network_rules[0].default_action == "Deny"
+    error_message = "Allow must remain reversible to the default Deny."
+  }
+}
+
+run "network_rules_allow_azure_services_without_exceptions" {
+  command = plan
+
+  variables {
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices"]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].default_action == "Allow" &&
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["None"])
+    )
+    error_message = "Normalize only the AzureRM default tuple that refresh would omit."
+  }
+}
+
+run "network_rules_allow_other_bypass" {
+  command = plan
+
+  variables {
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices", "Logging"]
+    }
+  }
+
+  assert {
+    condition     = azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices", "Logging"])
+    error_message = "Allow with a non-default bypass combination must be preserved."
+  }
+}
+
+run "network_rules_allow_with_ip_exception" {
+  command = plan
+
+  variables {
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices"]
+      ip_rules       = ["203.0.113.5"]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices"]) &&
+      azurerm_storage_account.account.network_rules[0].ip_rules == toset(["203.0.113.5"])
+    )
+    error_message = "AzureServices and IP exceptions must be preserved under Allow."
+  }
+}
+
+run "network_rules_allow_with_subnet_exception" {
+  command = plan
+
+  variables {
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices"]
+      subnet_ids     = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-network/providers/Microsoft.Network/virtualNetworks/vnet-test/subnets/snet-pe"]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices"]) &&
+      azurerm_storage_account.account.network_rules[0].virtual_network_subnet_ids == toset(var.network_rules.subnet_ids)
+    )
+    error_message = "AzureServices and subnet exceptions must be preserved under Allow."
+  }
+}
+
+run "network_rules_allow_with_resource_exception" {
+  command = plan
+
+  variables {
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices"]
+      private_link_access = [{
+        endpoint_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-test/providers/Microsoft.Storage/storageAccounts/exampleaccount"
+        endpoint_tenant_id   = "00000000-0000-0000-0000-000000000000"
+      }]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices"]) &&
+      azurerm_storage_account.account.network_rules[0].private_link_access[0].endpoint_resource_id == var.network_rules.private_link_access[0].endpoint_resource_id &&
+      azurerm_storage_account.account.network_rules[0].private_link_access[0].endpoint_tenant_id == var.network_rules.private_link_access[0].endpoint_tenant_id
+    )
+    error_message = "AzureServices and resource-access exceptions must be preserved under Allow."
+  }
+}
+
+run "network_rules_allow_with_known_ips" {
+  command = plan
+
+  variables {
+    allow_known_public_ips = true
+    network_rules = {
+      default_action = "Allow"
+      bypass         = ["AzureServices"]
+    }
+  }
+
+  assert {
+    condition = (
+      azurerm_storage_account.account.network_rules[0].bypass == toset(["AzureServices"]) &&
+      azurerm_storage_account.account.network_rules[0].ip_rules == toset(["192.0.2.10", "198.51.100.20"])
+    )
+    error_message = "Known IP exceptions must prevent normalization of AzureServices."
   }
 }
 
