@@ -112,7 +112,7 @@ variable "allow_nested_items_to_be_public" {
 }
 
 variable "network_rules" {
-  description = "Network rules restricing access to the storage account."
+  description = "Network rules restricting access to the storage account. Allow is explicitly managed; Allow with only AzureServices bypass and no exceptions is normalized to None to avoid AzureRM refresh drift."
   type = object({
     default_action      = optional(string, "Deny")
     bypass              = optional(list(string), ["None"]),

@@ -54,6 +54,15 @@ These are unit-style tests: they verify how the module turns inputs into
 resource configuration. They do not prove that Azure accepts the configuration;
 that still happens when a consuming workload runs `terraform plan`/`apply`.
 
+Firewall regression runs apply Deny and then Allow against the same mock state,
+check the reverse plan, and cover the AzureRM `Allow`/`AzureServices`/no-exceptions
+refresh special case. Separate runs preserve other bypass combinations and each
+kind of exception, including synthetic known public IPs. Mocks do not execute
+AzureRM's expand/flatten functions or refresh from Azure, so these runs cannot
+prove a drift-free live apply. The normalization is based on the provider's
+[`flattenAccountNetworkRules` implementation](https://github.com/hashicorp/terraform-provider-azurerm/blob/v4.67.0/internal/services/storage/storage_account_helpers_network.go#L36-L66),
+not an assumption that Azure discards bypass or exception lists under Allow.
+
 ## Fixture coverage and limits
 
 The synthetic network module returns only documentation-range IP addresses.

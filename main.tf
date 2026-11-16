@@ -8,6 +8,16 @@ locals {
   account_replication_type      = split("_", var.sku_name)[1]
   public_network_access_enabled = local.allow_known_pips ? true : var.public_network_access_enabled ? true : false
   allow_known_pips              = var.allow_known_public_ips != null ? var.allow_known_public_ips : split("-", var.resource_group_name)[0] == "d"
+  network_rules_ip_rules        = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), var.network_rules.ip_rules) : var.network_rules.ip_rules
+
+  # AzureRM flattens Allow/AzureServices with no exceptions to an absent block.
+  network_rules_bypass = (
+    var.network_rules.default_action == "Allow" &&
+    toset(var.network_rules.bypass) == toset(["AzureServices"]) &&
+    length(local.network_rules_ip_rules) == 0 &&
+    length(coalesce(var.network_rules.subnet_ids, [])) == 0 &&
+    length(var.network_rules.private_link_access) == 0
+  ) ? ["None"] : var.network_rules.bypass
 }
 
 module "network_vars" {
@@ -47,11 +57,11 @@ resource "azurerm_storage_account" "account" {
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled
 
   dynamic "network_rules" {
-    for_each = (var.network_rules.default_action != null ? var.network_rules.default_action : "Deny") == "Deny" ? [var.network_rules] : []
+    for_each = [var.network_rules]
     content {
       default_action             = network_rules.value.default_action != null ? network_rules.value.default_action : "Deny"
-      bypass                     = network_rules.value.bypass != null ? network_rules.value.bypass : ["None"]
-      ip_rules                   = local.allow_known_pips ? concat(values(module.network_vars[0].known_public_ips), network_rules.value.ip_rules) : network_rules.value.ip_rules
+      bypass                     = local.network_rules_bypass
+      ip_rules                   = local.network_rules_ip_rules
       virtual_network_subnet_ids = network_rules.value.subnet_ids != null ? network_rules.value.subnet_ids : []
 
       dynamic "private_link_access" {
