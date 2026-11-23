@@ -75,6 +75,11 @@ run "secure_defaults" {
   }
 
   assert {
+    condition     = var.smb_oauth_enabled == null
+    error_message = "SMB OAuth should be left to the provider default when omitted."
+  }
+
+  assert {
     condition     = azurerm_storage_account.account.network_rules[0].default_action == "Deny"
     error_message = "Network rules should deny by default."
   }
@@ -122,6 +127,32 @@ run "secure_defaults" {
   assert {
     condition     = length(random_string.unique) == 0
     error_message = "No random suffix should be generated when unique is given."
+  }
+}
+
+run "smb_oauth_enabled" {
+  command = apply
+
+  variables {
+    smb_oauth_enabled = true
+  }
+
+  assert {
+    condition     = azurerm_storage_account.account.smb_oauth_enabled == true
+    error_message = "SMB OAuth should be enabled when explicitly requested."
+  }
+}
+
+run "smb_oauth_disabled" {
+  command = plan
+
+  variables {
+    smb_oauth_enabled = false
+  }
+
+  assert {
+    condition     = azurerm_storage_account.account.smb_oauth_enabled == false
+    error_message = "SMB OAuth should be disabled when explicitly requested."
   }
 }
 
