@@ -52,6 +52,7 @@ resource "azurerm_storage_account" "account" {
   https_traffic_only_enabled        = var.https_only
   local_user_enabled                = var.sftp_enabled && var.is_hns_enabled
   sftp_enabled                      = var.sftp_enabled
+  smb_oauth_enabled                 = var.smb_oauth_enabled
 
   allowed_copy_scope               = var.allowed_copy_scope != null ? var.allowed_copy_scope : null
   cross_tenant_replication_enabled = var.cross_tenant_replication_enabled

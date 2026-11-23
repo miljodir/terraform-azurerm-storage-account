@@ -267,6 +267,12 @@ variable "sftp_enabled" {
   default     = false
 }
 
+variable "smb_oauth_enabled" {
+  type        = bool
+  description = "Allow managed identities to access SMB shares using OAuth. Null uses the AzureRM provider default (false); set true to preserve an existing enabled setting."
+  default     = null
+}
+
 variable "allowed_copy_scope" {
   type        = string
   description = "Limit the copy scope of incoming data to the storage account. Defaults to AAD."

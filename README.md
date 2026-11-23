@@ -7,6 +7,22 @@ The private dns zone must already exist and permissions required (e.g. Private D
 
 If `storage_account_name` is not specified, a random name including a `random_string` will be generated as the storage account name.
 
+## AzureRM compatibility and SMB OAuth
+
+This module requires AzureRM `>= 5.13.0, < 6.0`; support for AzureRM 4.x
+has been removed. This is a breaking provider-compatibility change and requires
+a major module release. Upgrade the provider and review the plan before applying.
+
+Set `smb_oauth_enabled = true` to allow managed identities to access SMB shares
+using OAuth, including to preserve an existing enabled setting. The default is
+`null`, which leaves the value to AzureRM's default of `false`. **It does not
+preserve an existing `true` value:** without an explicit `true`, AzureRM can plan
+to disable SMB OAuth on an existing account. Explicit `false` disables it.
+
+```hcl
+smb_oauth_enabled = true
+```
+
 ## Private Azure Files accounts
 
 The module supports `FileStorage` accounts with Azure Files retention and SMB
@@ -35,7 +51,7 @@ any resource group. It does not remove caller-supplied network rules.
 ```hcl
 module "files" {
   source  = "miljodir/storage-account/azurerm"
-  version = "~> 1.0"
+  version = "~> 2.0"
 
   storage_account_name = "examplefilesaccount"
   resource_group_name = "d-example"
@@ -71,9 +87,8 @@ module "files" {
 
 ### Compatibility and validation
 
-The example requires a module release containing these inputs. Published version
-`1.11.1` does not contain them; `~> 1.0` cannot consume this change until a new
-compatible release is published. No release version is prescribed here.
+The example requires a 2.x module release containing these changes. Until that
+major release is published, `~> 2.0` cannot be used.
 
 Existing callers retain their input defaults and output shapes:
 `storage_account` is the complete storage account resource object and
